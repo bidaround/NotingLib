@@ -15,17 +15,20 @@
 #define YTAPPID @"YTAPPIDKEY"
 #define SHAREURL @"SHAREURL"
 #define CHANNELID @"CHANNELID"
+@interface YouTuiSDK ()
+@property (strong , nonatomic) WeiboApi * WBApi;
+@property (strong , nonatomic) WeiboSDK * SinaWB;
+@property (strong , nonatomic) TencentOAuth * TcAuth;
+@property (strong , nonatomic) YouTuiSDK * YTsdk;
+@end
 @implementation YouTuiSDK
-{
-    WeiboApi * WBApi;
-    WeiboSDK * SinaWB;
-    TencentOAuth * TcAuth;
-}
 
+@synthesize WBApi,SinaWB,TcAuth,YTsdk;
 -(id)init
 {
     self = [super init];
-    if (self != nil) {
+    if (self != nil)
+    {
         WBApi = [[WeiboApi alloc]init];
         SinaWB = [[WeiboSDK alloc]init];
         TcAuth = [[TencentOAuth alloc]init];
@@ -106,7 +109,14 @@
     NSUserDefaults * defaults = [NSUserDefaults standardUserDefaults];
     [defaults setInteger:9 forKey:CHANNELID];   //存储频道ID
     UIPasteboard * pasteboard = [UIPasteboard generalPasteboard];
-    pasteboard.string = shortUrl;
+    if (shortUrl == nil || [shortUrl isEqualToString:@""])
+    {
+        pasteboard.string = Link;
+    }
+    else
+    {
+        pasteboard.string = shortUrl;
+    }
     [self SharePointisShare:YES];
 }
 
@@ -191,7 +201,7 @@
  *  @param musicUrl    音乐url
  *  @param musicTitle  歌曲名
  *  @param musicAuthor 歌手
- *  @param delegate    self
+ *  @param delegate    回调代理
  */
 -(void)TcWbShareMessage:(NSString *)message andImageUrl:(NSString *)imageUrl VideoUrl:(NSString *)VideoUrl Longitude:(NSString *)longitude Latitude:(NSString *)latitude MusicUrl:(NSString *)musicUrl MusicTitle:(NSString *)musicTitle MusicAuthor:(NSString *)musicAuthor delegate:(id)delegate
 {
@@ -271,6 +281,35 @@
 -(void)SinaWbLogoutWithToken:(NSString *)token Delegate:(id)delegate WithTag:(NSString *)Tag
 {
     [WeiboSDK logOutWithToken:token delegate:delegate withTag:Tag];
+}
+
+/**
+ *  新浪微博获取用户信息
+ *
+ *  @param Appkey 新浪微博开放平台获取的AppKey
+ *  @param Uid    用户ID
+ *
+ *  @return 用户信息
+ */
++(NSDictionary *)SinaGetUserInfoWithAppkey:(NSString *)Appkey Uid:(NSString *)Uid
+{
+    NSString * URLString = [NSString stringWithFormat:@"https://api.weibo.com/2/users/show.json?access_token=%@&uid=%@",Appkey,Uid];
+    NSURL * URL = [NSURL URLWithString:URLString];
+    NSURLRequest * request = [[NSURLRequest alloc]initWithURL:URL];
+    NSData * received = [NSURLConnection sendSynchronousRequest:request returningResponse:nil error:nil];
+    NSString * str = [[NSString alloc]initWithData:received encoding:NSUTF8StringEncoding];
+    return [str JSONValue];
+}
+
++(NSDictionary *)GetRequestDataURL:(NSString *)URL andBody:(NSString *)body
+{
+    NSString * URLString = [NSString stringWithFormat:@"%@%@",URL,body];
+    NSURL * url = [NSURL URLWithString:URLString];
+    NSURLRequest * request = [[NSURLRequest alloc]initWithURL:url];
+    NSData * received = [NSURLConnection sendSynchronousRequest:request returningResponse:nil error:nil];
+    NSString * str = [[NSString alloc]initWithData:received encoding:NSUTF8StringEncoding];
+    return [str JSONValue];
+
 }
 /**
  *  新浪微博客户端回调
@@ -436,20 +475,32 @@
 }
 
 /**
- *  微信获取当前授权用户的信息
+ *  微信获取当前授权用户的认证信息
  *
- *  @param AppId  微信开放平台申请的AppId
- *  @param Secret 微信开房平台申请的AppSecret
- *  @param code   用户换取access_token的code，仅在ErrCode为0时有效
- *
- *  @return 用户信息
+ *  @return 认证数据
  */
-+(NSString *)WxAuthGetUserInfoWithAppId:(NSString *)AppId Secret:(NSString *)Secret Code:(NSString *)code
++(NSDictionary *)WxAuthGetAccessTokenWithAppId:(NSString *)AppId Secret:(NSString *)Secret Code:(NSString *)code
 {
-    NSDictionary * AuthDict = [[YouTuiSDK PostRequestData:@"https://api.weixin.qq.com/sns/oauth2/access_token?" body:[NSString stringWithFormat:@"appid=%@&secret=%@&code=%@&grant_type=authorization_code",AppId,Secret,code]] JSONValue];
-    NSString * UserInfo = [YouTuiSDK PostRequestData:@"https://api.weixin.qq.com/sns/userinfo?" body:[NSString stringWithFormat:@"access_token=%@&openid=%@",[AuthDict objectForKey:@"access_token"],[AuthDict objectForKey:@"openid"]]];
+//    NSDictionary * AuthDict = [[YouTuiSDK PostRequestData:@"https://api.weixin.qq.com/sns/oauth2/access_token?"
+//                                                     body:[NSString stringWithFormat:@"appid=%@&secret=%@&code=%@&grant_type=authorization_code",AppId,Secret,code]] JSONValue];
+    NSDictionary * AuthDict = [YouTuiSDK GetRequestDataURL:@"https://api.weixin.qq.com/sns/oauth2/access_token?" andBody:[NSString stringWithFormat:@"appid=%@&secret=%@&code=%@&grant_type=authorization_code",AppId,Secret,code]];
+    return AuthDict;
+}
+/**
+ *  微信获取当前授权用户的个人信息
+ *
+ *  @param AccessToken 调用凭证
+ *  @param Openid      普通用户的标识,对当前开发者账号唯一
+ *
+ *  @return 个人信息
+ */
++(NSDictionary *)WxAuthGetUserInfoWithAccessToken:(NSString *)AccessToken Openid:(NSString *)Openid
+{
+//    NSDictionary * UserInfo = [[YouTuiSDK PostRequestData:@"https://api.weixin.qq.com/sns/userinfo?" body:[NSString stringWithFormat:@"access_token=%@&openid=%@",AccessToken,Openid]] JSONValue];
+    NSDictionary * UserInfo = [YouTuiSDK GetRequestDataURL:@"https://api.weixin.qq.com/sns/userinfo?" andBody:[NSString stringWithFormat:@"access_token=%@&openid=%@",AccessToken,Openid]];
     return UserInfo;
 }
+
 
 /**
  *  微信纯文本分享
@@ -707,12 +758,36 @@
  *
  *  @return 成功返回YES,失败返回NO
  */
--(BOOL)QQAuthorizeAppId:(NSString *)AppId Delegate:(id)delegate PermissionsArray:(NSArray *)permissionsArray
+-(BOOL)QQAuthorizeAppId:(NSString *)AppId Delegate:(id)delegate
 {
+    //授权信息列数组
+    NSArray * getAuthListArray = @[kOPEN_PERMISSION_GET_USER_INFO,            /** 获取用户信息 **/
+                                   kOPEN_PERMISSION_GET_SIMPLE_USER_INFO,         /** 移动端用户信息 **/
+                                   kOPEN_PERMISSION_ADD_ALBUM,                    /** 创建一个QQ空间相册<需要申请权限> **/
+                                   kOPEN_PERMISSION_ADD_IDOL,                     /** 收听腾讯微博上的用户 **/
+                                   kOPEN_PERMISSION_ADD_ONE_BLOG,                 /** 发表一篇日志到QQ空间<需要申请权限> **/
+                                   kOPEN_PERMISSION_ADD_PIC_T,                    /** 上传图片并发表消息到腾讯微博 **/
+                                   kOPEN_PERMISSION_ADD_SHARE,                    /** 同步分享到QQ空间、腾讯微博 **/
+                                   kOPEN_PERMISSION_ADD_TOPIC,                    /** 发表一条说说到QQ空间<需要申请权限> **/
+                                   kOPEN_PERMISSION_CHECK_PAGE_FANS,              /** 验证是否认证空间粉丝 **/
+                                   kOPEN_PERMISSION_DEL_IDOL,                     /** 取消收听腾讯微博上的用户 **/
+                                   kOPEN_PERMISSION_DEL_T,                        /** 删除一条微博信息 **/
+                                   kOPEN_PERMISSION_GET_FANSLIST,                 /** 获取登录用户的听众列表 **/
+                                   kOPEN_PERMISSION_GET_IDOLLIST,                 /** 获取登录用户的收听列表 **/
+                                   kOPEN_PERMISSION_GET_INFO,                     /** 获取登录用户自己的详细信息 **/
+                                   kOPEN_PERMISSION_GET_OTHER_INFO,               /** 获取其他用户的详细信息 **/
+                                   kOPEN_PERMISSION_GET_REPOST_LIST,              /** 获取一条微博的转播或评论信息列表 **/
+                                   kOPEN_PERMISSION_LIST_ALBUM,                   /** 获取用户QQ空间相册列表<需要申请权限> **/
+                                   kOPEN_PERMISSION_UPLOAD_PIC,                   /** 上传一张照片到QQ空间相册<需要申请权限> **/
+                                   kOPEN_PERMISSION_GET_VIP_INFO,                 /** 获取会员用户基本信息 **/
+                                   kOPEN_PERMISSION_GET_VIP_RICH_INFO,            /** 获取会员用户详细信息 **/
+                                   kOPEN_PERMISSION_GET_INTIMATE_FRIENDS_WEIBO,   /** 获取微博中最近at的好友 **/
+                                   kOPEN_PERMISSION_MATCH_NICK_TIPS_WEIBO];       /** 获取微博中匹配昵称的好友 **/
+
     if ([YouTuiSDK QQisInstalled])
     {
         TcAuth = [[TencentOAuth alloc]initWithAppId:AppId andDelegate:delegate];
-        return [TcAuth authorize:permissionsArray];
+        return [TcAuth authorize:getAuthListArray inSafari:YES];
     }
     else
     {
@@ -726,7 +801,7 @@
  *
  *  @param delegate 成功返回YES,失败返回NO
  */
--(void)QQLogoutDeleaget:(id)delegate
++(void)QQLogoutDeleaget:(id)delegate
 {
     [[TencentOAuth alloc] logout:delegate];
 }
@@ -828,7 +903,6 @@
         {
             [defaults setInteger:2 forKey:CHANNELID];   //存储频道ID
         }
-        
         if (imageUrl)
         {
             imageUrl = [YouTuiSDK SetShortUrlType:imageUrl];
@@ -1587,6 +1661,12 @@
 //MD5加密
 +(NSString *)GetMD5Data:(NSString *)SrcString
 {
+    if (SrcString == nil || [SrcString isEqualToString:@""])
+    {
+        return SrcString;
+    }
+    else
+    {
     const char * cStr = [SrcString UTF8String];
     unsigned char digest[CC_MD5_DIGEST_LENGTH];
     CC_MD5(cStr, (int)strlen(cStr), digest);
@@ -1595,7 +1675,9 @@
     {
         [result appendFormat:@"%02x",digest[i]];
     }
-    return result;
+        return result;
+    }
+    
 }
 //拼接公司短链接
 +(NSString *)GetCompanyShortUrl:(NSString *)url

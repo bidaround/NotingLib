@@ -162,6 +162,16 @@
 -(void)SinaWbLogoutWithToken:(NSString *)token
                     Delegate:(id)delegate
                      WithTag:(NSString *)Tag;
+
+/**
+ *  根据用户id获取用户信息
+ *
+ *  @param Appkey 新浪微博开放平台申请的Appkey
+ *  @param Uid    用户ID
+ *
+ *  @return 用户信息
+ */
++(NSDictionary *)SinaGetUserInfoWithAppkey:(NSString *)Appkey Uid:(NSString *)Uid;
 /**
  *  新浪微博客户端回调
  *
@@ -252,15 +262,21 @@
 +(void)WxLoginWithState:(NSString *)state;
 
 /**
- *  微信获取当前授权用户的信息
+ *  微信获取当前授权用户的认证信息
  *
- *  @param AppId  微信开放平台申请的AppId
- *  @param Secret 微信开房平台申请的AppSecret
- *  @param code   用户换取access_token的code，仅在ErrCode为0时有效
- *
- *  @return 用户信息
+ *  @return 认证数据
  */
-+(NSString *)WxAuthGetUserInfoWithAppId:(NSString *)AppId Secret:(NSString *)Secret Code:(NSString *)code;
++(NSDictionary *)WxAuthGetAccessTokenWithAppId:(NSString *)AppId Secret:(NSString *)Secret Code:(NSString *)code;
+
+/**
+ *  微信获取当前授权用户的个人信息
+ *
+ *  @param AccessToken 调用凭证
+ *  @param Openid      普通用户的标识,对当前开发者账号唯一
+ *
+ *  @return 个人信息
+ */
++(NSDictionary *)WxAuthGetUserInfoWithAccessToken:(NSString *)AccessToken Openid:(NSString *)Openid;
 
 /**
  *  微信纯文本分享
@@ -362,14 +378,13 @@
  *  @return 成功返回YES,失败返回NO
  */
 -(BOOL)QQAuthorizeAppId:(NSString *)AppId
-               Delegate:(id)delegate
-       PermissionsArray:(NSArray *)permissionsArray;
+               Delegate:(id)delegate;
 /**
  *  QQ登出授权
  *
  *  @param delegate 成功返回YES,失败返回NO
  */
--(void)QQLogoutDeleaget:(id)delegate;
++(void)QQLogoutDeleaget:(id)delegate;
 /**
  *  QQ获取当前授权用户信息
  */
@@ -758,6 +773,7 @@
 
 #pragma mark ----------新浪微博代理方法----------
 @protocol SinaWbDelegate<NSObject,WeiboSDKDelegate,WBHttpRequestDelegate>
+@optional
 /**
  *  收到新浪微博客户端程序的请求
  *
@@ -791,6 +807,7 @@
 
 //QQ授权回调
 @protocol QQAuthDelegate <NSObject,TencentSessionDelegate>
+@optional
 /**
  *  QQ获取用户个人信息的回调
  *
